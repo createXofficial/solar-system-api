@@ -1,33 +1,6 @@
 from rest_framework import serializers
-from .models import Meter, User, Transaction, Complaint, Bill
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'email', 'role']
-
-class MeterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Meter
-        fields = '__all__'
-
-class TransactionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Transaction
-        fields = '__all__'
-
-class ComplaintSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Complaint
-        fields = '__all__'
-
-class BillSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Bill
-        fields = '__all__'
-from rest_framework import serializers
-from .models import User, Meter, Transaction, Complaint, Bill
 from django.contrib.auth.password_validation import validate_password
+from .models import Bill, Complaint, Meter, TokenAuditLog,Transaction, User
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -61,4 +34,23 @@ class ComplaintSerializer(serializers.ModelSerializer):
 class BillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bill
+        fields = '__all__'
+        
+
+class ApplyTokenSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+    def validate_token(self, value):
+        try:
+            transaction = Transaction.objects.get(token=value)
+        except Transaction.DoesNotExist:
+            raise serializers.ValidationError("Invalid token provided.")
+        if transaction.is_applied:
+            raise serializers.ValidationError("Token has already been applied.")
+        return value
+    
+
+class TokenAuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TokenAuditLog
         fields = '__all__'
