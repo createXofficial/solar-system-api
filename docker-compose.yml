@@ -1,0 +1,48 @@
+x-logging:
+  &default-logging
+  options:
+    max-size: '12m'
+    max-file: '5'
+  driver: json-file
+
+services:
+  web:
+    image: docker.io/library/solar-sys:1.0.0
+    container_name: solar-web-wsgi
+    entrypoint: /bin/sh -c 'core/start.sh'
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+  nginx:
+      image: nginx:alpine
+      container_name: solarsys-nginx
+      volumes:
+        - static_volume:/app/staticfiles
+        - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      ports:
+        - "80:80"
+      depends_on:
+        - web
+  db:
+    image: postgres:13
+    container_name: solarsys-db
+    environment:
+      POSTGRES_DB: solarsys_db
+      POSTGRES_USER: solarsys_user
+      POSTGRES_PASSWORD: supersecure
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: "pg_isready"
+      timeout: 30s
+    restart: always
+    ports:
+      - 5432:5432
+volumes:
+  postgres_data:
+  static_volume:

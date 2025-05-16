@@ -1,0 +1,131 @@
+[project]
+name = "solarsys-backend"
+version = "1.0.0"
+description = "Backend for Solar System Application"
+authors = [
+    {name = "CreateX", email = "contact.createx@gmail.com"},
+]
+dependencies = [
+    "Django>=4.2,<5.0",
+    "psycopg2-binary",
+    "djangorestframework",
+    "django-filter",
+    "drf-yasg",
+    "djangorestframework-simplejwt",
+    "gunicorn",
+    "django-environ",
+    "requests",
+    "whitenoise",
+    "django-auto-logout",
+    "sentry-sdk",
+    "python-decouple",
+    "python-dateutil>=2.9.0.post0",
+    "pip>=25.1.1",
+]
+requires-python = ">=3.10"
+
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-pep517>=1.0.0"]
+build-backend = "pdm.pep517.api"
+
+
+[tool.pdm]
+distribution = true
+
+[tool.black]
+line-length = 100
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  | migrations
+)/
+'''
+
+[tool.pdm.scripts]
+solar-sys = "python solarsys.py runserver"
+solar-sys-migrate = "python solarsys.py migrate"
+solar-sys-makemigrations = "python solarsys.py makemigrations"
+solar-sys-collectstatic = "python solarsys.py collectstatic"
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_glob = ["*/migrations/*"]
+sections = [
+    "FUTURE",
+    "STDLIB",
+    "THIRDPARTY",
+    "DJANGO",
+    "DJANGO_ADDONS",
+    "FIRSTPARTY",
+    "LOCALFOLDER",
+]
+known_django = ["django"]
+known_django_addons = [
+    "rest_framework",
+    "django_filters",
+    "drf_yasg",
+    "django_auto_logout",
+    "django_extensions",
+]
+known_first_party = [
+
+    "core",
+]
+
+[tool.ruff]
+# Rules that are commented out would be nice to enable at some point, but they
+# are violated too often and not easy enough to fix to enable right them now.
+select = [
+    "W",
+    "E",
+    "F",
+    "N804",
+    "N805",
+    "UP004",
+    "UP005",
+    "UP006",
+    "UP008",
+    "UP010",
+    "UP018",
+    "B006",
+    "B904",
+    "C",
+    "ISC",
+    "Q",
+    "PL",
+    "DJ012",
+    "D200",
+    "D201",
+    "D202",
+    "D204",
+    # "D205",
+    "D206",
+    "D207",
+    "D208",
+    "D209",
+    "D210",
+    "D211",
+    "D300",
+    "D301",
+    # "D400",
+    # "D401",
+    # "D402",
+    "D403",
+    "D412",
+    "D414",
+    "D418",
+    "D419",
+    "INT",
+    "N",
+]
+
+ignore = ["E501", "C417", "C901", "PLR", "PLW2901", "PLC1901", "W605", "N818"]
+
+extend-exclude = ["migrations"]
+
+line-length = 100
+target-version = "py38"

@@ -1,0 +1,45 @@
+repos:
+  # 🔹 Basic sanity checks (YAML, whitespace, etc.)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+      - id: debug-statements
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-json
+        exclude: "structurizr/.*"
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: end-of-file-fixer
+        exclude: ".min.js|.min.css|.js.map|structurizr/.*"
+      - id: fix-byte-order-marker
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: name-tests-test
+        args: [--django]
+        exclude: "factories.py|dockerfiles/.*|tests/utils.*"
+      - id: trailing-whitespace
+
+  # 🔹 Black for formatting
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+        exclude: migrations/
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.11.5
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/rtts/djhtml
+    rev: '3.0.2'
+    hooks:
+      - id: djhtml
