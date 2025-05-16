@@ -8,13 +8,16 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, logout
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
 from rest_framework import generics, permissions, status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from core.authentication import JWTAuthentication
 
 from .models import BlacklistedToken, TwoFactorCode
 from .serializers import (
@@ -22,7 +25,9 @@ from .serializers import (
     EmailSerializer,
     PasswordResetSerializer,
     RegisterSerializer,
+    UserSerializer,
 )
+from .utils import create_audit_log
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +66,12 @@ class LoginView(APIView):
             else:
                 # Issue tokens
                 refresh = RefreshToken.for_user(user)
+                create_audit_log(
+                    user=user,
+                    model_name="User",
+                    action="login",
+                    description=f"User {user.username} logged in",
+                )
                 return Response(
                     {
                         "refresh": str(refresh),
@@ -109,6 +120,7 @@ class TwoFactorVerifyView(APIView):
 class LogoutView(APIView):
     def post(self, request):
         refresh_token = request.data.get("refresh")
+        user = request.user
         if not refresh_token:
             return Response({"error": "Refresh token required"}, status=400)
 
@@ -120,6 +132,12 @@ class LogoutView(APIView):
 
         # Save to blacklist
         BlacklistedToken.objects.create(token=refresh_token)
+        create_audit_log(
+            user=user,
+            model_name="User",
+            action="login",
+            description=f"User {user.username} logged out",
+        )
         return Response({"detail": "Logged out successfully."})
 
 
@@ -235,3 +253,112 @@ class ChangePasswordView(APIView):
             request.user.save()
             return Response({"status": "Password updated."})
         return Response(serializer.errors, status=400)
+
+
+class UserListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.role == "admin":
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+        users = User.objects.all().order_by("-date_joined")
+
+        # Filter by role (admin, customer, technician)
+        role = request.query_params.get("role")
+        if role in ["admin", "customer", "technician"]:
+            users = users.filter(role=role)
+
+        # Search by username or email
+        search = request.query_params.get("search")
+        if search:
+            users = users.filter(Q(username__icontains=search) | Q(email__icontains=search))
+        serialer = UserSerializer(users, many=True)
+        return Response(serialer.data)
+
+
+class UserDetailUpdateDeleteView(APIView):
+    """
+    Admins can update/delete any user.
+    Authenticated users can only view/update/delete their own account.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, user_id):
+        try:
+            return User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return None
+
+    def get(self, request, user_id):
+        user = self.get_object(user_id)
+        if not user:
+            return Response({"detail": "User not found."}, status=404)
+        if request.user != user and request.user.role != "admin":
+            return Response({"detail": "Not allowed."}, status=403)
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+
+    def put(self, request, user_id):
+        user = self.get_object(user_id)
+        if not user:
+            return Response({"detail": "User not found."}, status=404)
+        if request.user != user and request.user.role != "admin":
+            return Response({"detail": "Not allowed."}, status=403)
+
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            # Prevent email/username duplication
+            username = serializer.validated_data.get("username")
+            email = serializer.validated_data.get("email")
+
+            if username and User.objects.filter(username=username).exclude(id=user.id).exists():
+                return Response({"username": "Username already exists."}, status=400)
+            if email and User.objects.filter(email=email).exclude(id=user.id).exists():
+                return Response({"email": "Email already exists."}, status=400)
+
+            serializer.save()
+            create_audit_log(
+                user=request.user,
+                model_name="User",
+                action="updated",
+                description=f"Updated user {user.username}",
+                object_id=user.id,
+            )
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, user_id):
+        user = self.get_object(user_id)
+        if not user:
+            return Response({"detail": "User not found."}, status=404)
+        if request.user != user and request.user.role != "admin":
+            return Response({"detail": "Not allowed."}, status=403)
+        user.soft_delete()
+        create_audit_log(
+            user=request.user,
+            model_name="User",
+            action="deleted",
+            description=f"Deleted user {user.username}",
+            object_id=user.id,
+        )
+        return Response({"detail": "User deleted."}, status=204)
+
+
+class RefreshTokenView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            return Response(
+                {"detail": "Refresh token required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            tokens = JWTAuthentication.refresh_access_token(refresh_token)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+        return Response(tokens, status=status.HTTP_200_OK)

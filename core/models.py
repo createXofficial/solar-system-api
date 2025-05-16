@@ -35,6 +35,10 @@ class User(AbstractUser):
     def all_bills(self):
         return Bill.objects.filter(meter__owner=self)
 
+    def soft_delete(self):
+        self.is_active = False
+        self.save()
+
 
 class TwoFactorCode(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -123,7 +127,7 @@ class Transaction(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.expiry_date:
-            self.expiry_date = self.created_at + timedelta(days=7)
+            self.expiry_date = timezone.now() + timedelta(days=7)
         super().save(*args, **kwargs)
 
     def is_expired(self):
@@ -243,8 +247,9 @@ class TokenAuditLog(models.Model):
         return f"AuditLog: {self.transaction.token} on {self.meter.meter_number}"
 
 
-class ChangeLog(models.Model):
+class AuditLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    user_snapshot = models.CharField(max_length=150, blank=True)  # store username even if deleted
     model_name = models.CharField(max_length=100)
     action = models.CharField(
         max_length=10,
@@ -257,8 +262,13 @@ class ChangeLog(models.Model):
     description = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        if self.user and not self.user_snapshot:
+            self.user_snapshot = self.user.username
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.action.title()} {self.model_name} by {self.user}"
+        return f"{self.action.title()} {self.model_name} by {self.user_snapshot or 'Unknown'}"
 
 
 class BlacklistedToken(models.Model):

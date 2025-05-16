@@ -2,15 +2,20 @@ import logging
 
 from django.utils import timezone
 
-from rest_framework import status, views, viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, permissions, status, views, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Bill, Complaint, Meter, TokenAuditLog, Transaction, User
-from .permissions import IsCustomerOwner
+from core.utils import create_audit_log
+
+from .models import AuditLog, Bill, Complaint, Meter, TokenAuditLog, Transaction, User
+from .permissions import IsAdminUser, IsCustomerOwner
 from .serializers import (
     ApplyTokenSerializer,
+    AuditLogSerializer,
     BillSerializer,
     ComplaintSerializer,
     MeterSerializer,
@@ -22,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 class ApplyTokenView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         serializer = ApplyTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -51,11 +58,48 @@ class MeterViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsCustomerOwner]
 
     def get_queryset(self):
-        queryset = Meter.objects.all().order_by("id")
         user = self.request.user
+        if not user.is_authenticated or not hasattr(user, "role"):
+            raise PermissionDenied("Authentication required or role missing.")
+
+        queryset = Meter.objects.all().order_by("id")
         if user.role == "admin":
             return queryset
         return queryset.filter(owner=user)
+
+    def perform_create(self, serializer):
+        instance = serializer.save(installed_by=self.request.user)
+
+        create_audit_log(
+            user=self.request.user,
+            model_name="Meter",
+            action="created",
+            description=f"Created meter {instance.meter_number}",
+            object_id=instance.id,
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+
+        create_audit_log(
+            user=self.request.user,
+            model_name="Meter",
+            action="updated",
+            description=f"Updated meter {instance.meter_number}",
+            object_id=instance.id,
+        )
+
+    def perform_destroy(self, instance):
+        meter_number = instance.meter_number
+        instance.delete()
+
+        create_audit_log(
+            user=self.request.user,
+            model_name="Meter",
+            action="deleted",
+            description=f"Deleted meter {meter_number}",
+            object_id=instance.id,
+        )
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
@@ -68,6 +112,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
         try:
             transaction = self.get_object()
             transaction.apply_token()
+
             return Response({"message": "Token applied successfully."})
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -84,14 +129,17 @@ class ComplaintViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Complaint.objects.select_related("customer", "technician").all().order_by("id")
         user = self.request.user
+        if not user.is_authenticated or not hasattr(user, "role"):
+            raise PermissionDenied("Authentication required or role missing.")
+
+        queryset = Complaint.objects.select_related("customer", "technician").all().order_by("id")
         if user.role == "admin":
             return queryset
         return queryset.filter(customer=user)
 
-    def perform_create(self, serializer):
-        serializer.save(customer=self.request.user)
+    # def perform_create(self, serializer):
+    #     serializer.save(customer=self.request.user)
 
     @action(detail=True, methods=["post"])
     def assign_technician(self, request, pk=None):
@@ -106,6 +154,7 @@ class ComplaintViewSet(viewsets.ModelViewSet):
                 f"assigned to complaint({complaint}) "
                 f"by user {request.user.username}"
             )
+
             return Response({"message": "Technician assigned"})
         except Exception as e:
             return Response({"error": str(e)}, status=400)
@@ -114,16 +163,23 @@ class ComplaintViewSet(viewsets.ModelViewSet):
 class BillViewSet(viewsets.ModelViewSet):
     serializer_class = BillSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     filterset_fields = ["status"]
     search_fields = ["meter__meter_number"]
     ordering_fields = ["due_date"]
 
     def get_queryset(self):
-        queryset = Bill.objects.select_related("meter", "meter__owner").all().order_by("id")
         user = self.request.user
+        if not user.is_authenticated or not hasattr(user, "role"):
+            raise PermissionDenied("Authentication required or role missing.")
+
+        queryset = Bill.objects.select_related("meter", "meter__owner").all().order_by("id")
         if user.role == "admin":
             return queryset
         return queryset.filter(meter__owner=user)
+
+    def perform_create(self, serializer):
+        serializer.save()
 
 
 class CustomerViewSet(viewsets.ViewSet):
@@ -192,3 +248,18 @@ class CustomerViewSet(viewsets.ViewSet):
                 "new_balance": tx.meter.credit_balance,
             }
         )
+
+
+class IsAdminUserOrStaff(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user and (request.user.is_staff or request.user.role == "admin")
+
+
+class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = AuditLog.objects.all().order_by("-timestamp")
+    serializer_class = AuditLogSerializer
+    permission_classes = [IsAdminUserOrStaff]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["model_name", "action"]
+    search_fields = ["description", "user_snapshot"]
+    ordering_fields = ["timestamp"]

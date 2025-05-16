@@ -11,6 +11,7 @@ from core.models import BlacklistedToken, User
 
 ACCESS_TOKEN_LIFETIME = datetime.timedelta(minutes=15)
 REFRESH_TOKEN_LIFETIME = datetime.timedelta(days=7)
+TOKEN_RENEWAL_WINDOW = datetime.timedelta(minutes=5)
 
 
 class JWTAuthentication(BaseAuthentication):
@@ -35,6 +36,15 @@ class JWTAuthentication(BaseAuthentication):
 
         user = self.get_user_from_payload(payload)
         request.user = user
+
+        exp = datetime.datetime.fromtimestamp(payload["exp"])
+        now_utc = datetime.datetime.utcnow()
+        if (exp - now_utc) < TOKEN_RENEWAL_WINDOW:
+            new_tokens = self.generate_tokens(
+                user, two_fa_verified=payload.get("2fa_verified", False)
+            )
+            request.META["RENEWED_TOKEN"] = new_tokens["access"]
+
         return (user, token)
 
     def get_user_from_payload(self, payload):

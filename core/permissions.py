@@ -6,6 +6,11 @@ class IsCustomerOwner(permissions.BasePermission):
         return obj.owner == request.user or request.user.role == "admin"
 
 
+class IsAdminUser(permissions.BasePermission):
+    def has_permission(self, request, view):
+        request.user.role == "admin"
+
+
 class IsTechnicianOrAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.role in ["technician", "admin"]

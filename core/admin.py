@@ -1,8 +1,8 @@
 from django.contrib import admin
 
 from .models import (
+    AuditLog,
     Bill,
-    ChangeLog,
     Complaint,
     ComplaintStatus,
     Meter,
@@ -89,11 +89,11 @@ class ComplaintStatusAdmin(admin.ModelAdmin):
     list_display = ("name",)
 
 
-@admin.register(ChangeLog)
-class ChangeLogAdmin(admin.ModelAdmin):
-    list_display = ("model_name", "action", "user", "timestamp")
-    search_fields = ("model_name", "user__username")
-    list_filter = ("action", "timestamp")
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ("user_snapshot", "model_name", "action", "timestamp")
+    search_fields = ("user_snapshot", "model_name", "description")
+    list_filter = ("action", "model_name", "timestamp")
 
     # 🔹 Read-only audit fields
     readonly_fields = ("model_name", "action", "user", "timestamp")

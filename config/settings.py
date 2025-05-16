@@ -58,6 +58,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django_auto_logout.middleware.auto_logout",
+    "core.middleware.CurrentUserMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

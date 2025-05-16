@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 
 from rest_framework import serializers
 
-from .models import Bill, Complaint, Meter, TokenAuditLog, Transaction
+from .models import AuditLog, Bill, Complaint, Meter, TokenAuditLog, Transaction, UserRole
 
 User = get_user_model()
 
@@ -71,17 +71,49 @@ class ChangePasswordSerializer(serializers.Serializer):
         return attrs
 
 
+class UserSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "telephone", "gender"]
+
+
 class MeterSerializer(serializers.ModelSerializer):
-    owner = UserSerializer(read_only=True)
-    installed_by = UserSerializer(read_only=True)
+    owner = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    owner_details = UserSummarySerializer(source="owner", read_only=True)
+    installed_by = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), required=False, allow_null=True
+    )
 
     class Meta:
         model = Meter
-        fields = "__all__"
+        fields = [
+            "id",
+            "meter_number",
+            "owner",  # for writing
+            "owner_details",  # read-only nested
+            "location",
+            "status",
+            "credit_balance",
+            "date_installed",
+            "installed_by",  # for writing
+        ]
+
+    def validate_owner(self, value):
+        if value.role != UserRole.CUSTOMER:
+            raise serializers.ValidationError("Meter owner must be a customer.")
+        return value
+
+    def validate_installed_by(self, value):
+        if value.role not in [UserRole.ADMIN, UserRole.TECHNICIAN]:
+            raise serializers.ValidationError("Installer must be an admin or technician.")
+        return value
 
 
 class TransactionSerializer(serializers.ModelSerializer):
-    meter = MeterSerializer(read_only=True)
+    meter = MeterSerializer(read_only=True)  # For response display
+    meter_id = serializers.PrimaryKeyRelatedField(
+        queryset=Meter.objects.all(), write_only=True
+    )  # For input
 
     class Meta:
         model = Transaction
@@ -94,6 +126,10 @@ class TransactionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("This token has expired.")
         return data
 
+    def create(self, validated_data):
+        meter = validated_data.pop("meter_id")
+        return Transaction.objects.create(meter=meter, **validated_data)
+
 
 class ComplaintSerializer(serializers.ModelSerializer):
     class Meta:
@@ -103,6 +139,9 @@ class ComplaintSerializer(serializers.ModelSerializer):
 
 class BillSerializer(serializers.ModelSerializer):
     meter = MeterSerializer(read_only=True)
+    meter_id = serializers.PrimaryKeyRelatedField(
+        queryset=Meter.objects.all(), source="meter", write_only=True
+    )
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     remaining_amount = serializers.SerializerMethodField()
 
@@ -112,6 +151,15 @@ class BillSerializer(serializers.ModelSerializer):
 
     def get_remaining_amount(self, obj):
         return obj.amount_due
+
+    def validate_meter(self, meter):
+        request = self.context.get("request")
+        if request and hasattr(request.user, "role") and request.user.role != "admin":
+            if meter.owner != request.user:
+                raise serializers.ValidationError(
+                    "You cannot assign a bill to a meter you do not own."
+                )
+        return meter
 
 
 class ApplyTokenSerializer(serializers.Serializer):
@@ -164,3 +212,25 @@ class PasswordResetSerializer(serializers.Serializer):
         except ValidationError as e:
             raise serializers.ValidationError({"new_password": e.messages})
         return data
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    user_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            "id",
+            "user_display",
+            "model_name",
+            "action",
+            "description",
+            "timestamp",
+        ]
+
+    def get_user_display(self, obj):
+        if obj.user and obj.user.is_active:
+            return obj.user.username
+        elif obj.user_snapshot:
+            return f"{obj.user_snapshot} (Deleted)"
+        return "Unknown"
