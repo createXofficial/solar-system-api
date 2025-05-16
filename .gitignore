@@ -16,3 +16,7 @@ media/
 .idea/
 .vscode/
 *.DS_Store
+__pypackages__/
+.mypy_cache/
+
+tmp.txt
