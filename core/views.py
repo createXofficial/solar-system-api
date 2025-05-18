@@ -70,36 +70,36 @@ class MeterViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(installed_by=self.request.user)
 
-        create_audit_log(
-            user=self.request.user,
-            model_name="Meter",
-            action="created",
-            description=f"Created meter {instance.meter_number}",
-            object_id=instance.id,
-        )
+        # create_audit_log(
+        #     user=self.request.user,
+        #     model_name="Meter",
+        #     action="created",
+        #     description=f"Created meter {instance.meter_number}",
+        #     object_id=instance.id,
+        # )
 
     def perform_update(self, serializer):
         instance = serializer.save()
 
-        create_audit_log(
-            user=self.request.user,
-            model_name="Meter",
-            action="updated",
-            description=f"Updated meter {instance.meter_number}",
-            object_id=instance.id,
-        )
+        # create_audit_log(
+        #     user=self.request.user,
+        #     model_name="Meter",
+        #     action="updated",
+        #     description=f"Updated meter {instance.meter_number}",
+        #     object_id=instance.id,
+        # )
 
     def perform_destroy(self, instance):
         meter_number = instance.meter_number
         instance.delete()
 
-        create_audit_log(
-            user=self.request.user,
-            model_name="Meter",
-            action="deleted",
-            description=f"Deleted meter {meter_number}",
-            object_id=instance.id,
-        )
+        # create_audit_log(
+        #     user=self.request.user,
+        #     model_name="Meter",
+        #     action="deleted",
+        #     description=f"Deleted meter {meter_number}",
+        #     object_id=instance.id,
+        # )
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
@@ -252,6 +252,7 @@ class CustomerViewSet(viewsets.ViewSet):
 
 class IsAdminUserOrStaff(permissions.BasePermission):
     def has_permission(self, request, view):
+        print(request.user)
         return request.user and (request.user.is_staff or request.user.role == "admin")
 
 

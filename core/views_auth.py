@@ -51,7 +51,8 @@ class LoginView(APIView):
                 # Generate and send 2FA code
                 code = TwoFactorCode.generate_code()
                 expires_at = now + timedelta(minutes=10)
-                TwoFactorCode.objects.create(user=user, code=code, expires_at=expires_at)
+                TwoFactorCode.objects.create(
+                    user=user, code=code, expires_at=expires_at)
                 send_mail(
                     "Your 2FA Code",
                     f"Your verification code is: {code}",
@@ -59,27 +60,36 @@ class LoginView(APIView):
                     [user.email],
                     fail_silently=False,
                 )
+                serializer = UserSerializer(user)
                 return Response(
-                    {"detail": "2FA code sent to your email."},
+                    {
+                        "responseCode": "001",
+                        "responseMessage": "2FA code sent to your email.",
+                        "user":serializer.data
+                    },
                     status=status.HTTP_200_OK,
                 )
             else:
                 # Issue tokens
                 refresh = RefreshToken.for_user(user)
-                create_audit_log(
-                    user=user,
-                    model_name="User",
-                    action="login",
-                    description=f"User {user.username} logged in",
-                )
+                # create_audit_log(
+                #     user=user,
+                #     model_name="User",
+                #     action="login",
+                #     description=f"User {user.username} logged in",
+                # )
+                serializer = UserSerializer(user)
                 return Response(
                     {
+                        "responseCode": "000",
+                        "responseMessage": "User logged in successfully",
+                        "user":serializer.data,
                         "refresh": str(refresh),
                         "access": str(refresh.access_token),
                     },
                     status=status.HTTP_200_OK,
                 )
-        return Response({"detail": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"detail": "Invalid credentials."})
 
 
 class TwoFactorVerifyView(APIView):
@@ -91,7 +101,8 @@ class TwoFactorVerifyView(APIView):
         try:
             user = User.objects.get(username=username)
             two_fa = (
-                TwoFactorCode.objects.filter(user=user, code=code).order_by("-created_at").first()
+                TwoFactorCode.objects.filter(
+                    user=user, code=code).order_by("-created_at").first()
             )
             if two_fa and not two_fa.is_expired():
                 # Update last 2FA verified time
@@ -103,6 +114,7 @@ class TwoFactorVerifyView(APIView):
                 refresh = RefreshToken.for_user(user)
                 return Response(
                     {
+                        "responseCode":"000",
                         "refresh": str(refresh),
                         "access": str(refresh.access_token),
                     },
@@ -110,8 +122,8 @@ class TwoFactorVerifyView(APIView):
                 )
             else:
                 return Response(
-                    {"detail": "Invalid or expired 2FA code."},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {"responseMessage": "Invalid or expired 2FA code.",
+                     "responseCode":"111"},
                 )
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -126,18 +138,19 @@ class LogoutView(APIView):
 
         # Decode to check validity
         try:
-            jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=["HS256"])
+            jwt.decode(refresh_token, settings.SECRET_KEY,
+                       algorithms=["HS256"])
         except jwt.InvalidTokenError:
             return Response({"error": "Invalid token"}, status=400)
 
         # Save to blacklist
         BlacklistedToken.objects.create(token=refresh_token)
-        create_audit_log(
-            user=user,
-            model_name="User",
-            action="login",
-            description=f"User {user.username} logged out",
-        )
+        # create_audit_log(
+        #     user=user,
+        #     model_name="User",
+        #     action="login",
+        #     description=f"User {user.username} logged out",
+        # )
         return Response({"detail": "Logged out successfully."})
 
 
@@ -259,6 +272,7 @@ class UserListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        print("user--",request.user)
         if not request.user.role == "admin":
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
 
@@ -272,7 +286,8 @@ class UserListView(APIView):
         # Search by username or email
         search = request.query_params.get("search")
         if search:
-            users = users.filter(Q(username__icontains=search) | Q(email__icontains=search))
+            users = users.filter(Q(username__icontains=search)
+                                 | Q(email__icontains=search))
         serialer = UserSerializer(users, many=True)
         return Response(serialer.data)
 
@@ -319,13 +334,13 @@ class UserDetailUpdateDeleteView(APIView):
                 return Response({"email": "Email already exists."}, status=400)
 
             serializer.save()
-            create_audit_log(
-                user=request.user,
-                model_name="User",
-                action="updated",
-                description=f"Updated user {user.username}",
-                object_id=user.id,
-            )
+            # create_audit_log(
+            #     user=request.user,
+            #     model_name="User",
+            #     action="updated",
+            #     description=f"Updated user {user.username}",
+            #     object_id=user.id,
+            # )
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
 
@@ -336,13 +351,13 @@ class UserDetailUpdateDeleteView(APIView):
         if request.user != user and request.user.role != "admin":
             return Response({"detail": "Not allowed."}, status=403)
         user.soft_delete()
-        create_audit_log(
-            user=request.user,
-            model_name="User",
-            action="deleted",
-            description=f"Deleted user {user.username}",
-            object_id=user.id,
-        )
+        # create_audit_log(
+        #     user=request.user,
+        #     model_name="User",
+        #     action="deleted",
+        #     description=f"Deleted user {user.username}",
+        #     object_id=user.id,
+        # )
         return Response({"detail": "User deleted."}, status=204)
 
 

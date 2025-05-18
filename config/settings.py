@@ -25,6 +25,8 @@ SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DJANGO_DEBUG", cast=bool, default=False)
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
+CORS_ORIGIN_ALLOW_ALL = True
+
 # ---------------------------------------------------
 # Installed Apps
 # ---------------------------------------------------
@@ -43,12 +45,14 @@ INSTALLED_APPS = [
     "django_extensions",
     # Project apps
     "core",
+    'corsheaders',
 ]
 
 # ---------------------------------------------------
 # Middleware
 # ---------------------------------------------------
 MIDDLEWARE = [
+     'corsheaders.middleware.CorsMiddleware',
     # "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -86,14 +90,20 @@ WSGI_APPLICATION = "config.wsgi.application"
 # ---------------------------------------------------
 # Database
 # ---------------------------------------------------
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": config("POSTGRES_DB"),
+#         "USER": config("POSTGRES_USER"),
+#         "PASSWORD": config("POSTGRES_PASSWORD"),
+#         "HOST": config("POSTGRES_HOST", default="localhost"),
+#         "PORT": config("POSTGRES_PORT", default="5432"),
+#     }
+# }
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("POSTGRES_DB"),
-        "USER": config("POSTGRES_USER"),
-        "PASSWORD": config("POSTGRES_PASSWORD"),
-        "HOST": config("POSTGRES_HOST", default="localhost"),
-        "PORT": config("POSTGRES_PORT", default="5432"),
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 

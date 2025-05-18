@@ -14,7 +14,8 @@ class TwoFactorCodeSerializer(serializers.Serializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    password = serializers.CharField(
+        write_only=True, required=True, validators=[validate_password])
 
     class Meta:
         model = User
@@ -22,12 +23,14 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("A user with this email already exists.")
+            raise serializers.ValidationError(
+                "A user with this email already exists.")
         return value
 
     def validate_username(self, value):
         if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("A user with this username already exists.")
+            raise serializers.ValidationError(
+                "A user with this username already exists.")
         return value
 
     def create(self, validated_data):
@@ -100,12 +103,14 @@ class MeterSerializer(serializers.ModelSerializer):
 
     def validate_owner(self, value):
         if value.role != UserRole.CUSTOMER:
-            raise serializers.ValidationError("Meter owner must be a customer.")
+            raise serializers.ValidationError(
+                "Meter owner must be a customer.")
         return value
 
     def validate_installed_by(self, value):
         if value.role not in [UserRole.ADMIN, UserRole.TECHNICIAN]:
-            raise serializers.ValidationError("Installer must be an admin or technician.")
+            raise serializers.ValidationError(
+                "Installer must be an admin or technician.")
         return value
 
 
@@ -142,7 +147,8 @@ class BillSerializer(serializers.ModelSerializer):
     meter_id = serializers.PrimaryKeyRelatedField(
         queryset=Meter.objects.all(), source="meter", write_only=True
     )
-    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True)
     remaining_amount = serializers.SerializerMethodField()
 
     class Meta:
@@ -172,7 +178,8 @@ class ApplyTokenSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid token provided.")
 
         if transaction.is_applied:
-            raise serializers.ValidationError("Token has already been applied.")
+            raise serializers.ValidationError(
+                "Token has already been applied.")
 
         if transaction.is_expired():
             raise serializers.ValidationError("This token has expired.")

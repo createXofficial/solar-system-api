@@ -9,7 +9,7 @@ from rest_framework.authentication import BaseAuthentication
 
 from core.models import BlacklistedToken, User
 
-ACCESS_TOKEN_LIFETIME = datetime.timedelta(minutes=15)
+ACCESS_TOKEN_LIFETIME = datetime.timedelta(hours=15)
 REFRESH_TOKEN_LIFETIME = datetime.timedelta(days=7)
 TOKEN_RENEWAL_WINDOW = datetime.timedelta(minutes=5)
 
@@ -86,6 +86,7 @@ class JWTAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed("Token has been revoked")
         try:
             payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=["HS256"])
+            print("token type------",payload.get("type"))
             if payload.get("type") != "refresh":
                 raise exceptions.AuthenticationFailed("Invalid token type for refresh")
         except jwt.ExpiredSignatureError:
