@@ -23,6 +23,7 @@ from .views_auth import (
     PasswordResetConfirmView,
     RefreshTokenView,
     RegisterView,
+    SessionCheckView,
     TwoFactorVerifyView,
     UserDetailUpdateDeleteView,
     UserListView,
@@ -53,6 +54,7 @@ urlpatterns = [
         name="password-reset-confirm",
     ),
     path("auth/token/refresh/", RefreshTokenView.as_view(), name="token_refresh"),
+    path("auth/session-check/", SessionCheckView.as_view(), name="session-check"),
     # Token
     path("apply-token/", ApplyTokenView.as_view(), name="apply-token"),
     # Users

@@ -43,16 +43,17 @@ INSTALLED_APPS = [
     "drf_yasg",
     "django_auto_logout",
     "django_extensions",
+    "auditlog",
     # Project apps
     "core",
-    'corsheaders',
+    "corsheaders",
 ]
 
 # ---------------------------------------------------
 # Middleware
 # ---------------------------------------------------
 MIDDLEWARE = [
-     'corsheaders.middleware.CorsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     # "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -63,6 +64,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django_auto_logout.middleware.auto_logout",
     "core.middleware.CurrentUserMiddleware",
+    "auditlog.middleware.AuditlogMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -90,20 +92,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 # ---------------------------------------------------
 # Database
 # ---------------------------------------------------
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": config("POSTGRES_DB"),
-#         "USER": config("POSTGRES_USER"),
-#         "PASSWORD": config("POSTGRES_PASSWORD"),
-#         "HOST": config("POSTGRES_HOST", default="localhost"),
-#         "PORT": config("POSTGRES_PORT", default="5432"),
-#     }
-# }
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": config("POSTGRES_DB"),
+        "USER": config("POSTGRES_USER"),
+        "PASSWORD": config("POSTGRES_PASSWORD"),
+        "HOST": config("POSTGRES_HOST", default="localhost"),
+        "PORT": config("POSTGRES_PORT", default="5432"),
     }
 }
 
@@ -162,16 +158,12 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 # ---------------------------------------------------
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # For development
-# EMAIL_HOST = config('EMAIL_HOST')
-# EMAIL_PORT = config('EMAIL_PORT', cast=int)
-# EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-# EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-# EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
-EMAIL_USE_TLS = True
-EMAIL_FROM_ADDRESS = "noreply - delft.care <noreply@delft.care>"
-EMAIL_HOST = "smtp.office365.com"
-EMAIL_HOST_PASSWORD = "1ZQ0nmzg%8i$s3F*a@Qxsgrw0SZMW*cF"
-EMAIL_HOST_USER = "noreply@delft.care"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+EMAIL_PORT = 465
+EMAIL_HOST_USER = "creatextesting@gmail.com"
+EMAIL_HOST_PASSWORD = "vbfaclenjpxwclts"
 
 
 # ---------------------------------------------------

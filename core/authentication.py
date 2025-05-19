@@ -3,13 +3,14 @@ import datetime
 import jwt
 
 from django.conf import settings
+from django.contrib.auth.backends import ModelBackend
 
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication
 
 from core.models import BlacklistedToken, User
 
-ACCESS_TOKEN_LIFETIME = datetime.timedelta(hours=15)
+ACCESS_TOKEN_LIFETIME = datetime.timedelta(minutes=15)
 REFRESH_TOKEN_LIFETIME = datetime.timedelta(days=7)
 TOKEN_RENEWAL_WINDOW = datetime.timedelta(minutes=5)
 
@@ -43,7 +44,8 @@ class JWTAuthentication(BaseAuthentication):
             new_tokens = self.generate_tokens(
                 user, two_fa_verified=payload.get("2fa_verified", False)
             )
-            request.META["RENEWED_TOKEN"] = new_tokens["access"]
+            print("New tokens generated:", new_tokens)
+            request.META["RENEWED_TOKEN"] = new_tokens["data"]["access"]
 
         return (user, token)
 
@@ -78,7 +80,11 @@ class JWTAuthentication(BaseAuthentication):
         access_token = jwt.encode(access_payload, settings.SECRET_KEY, algorithm="HS256")
         refresh_token = jwt.encode(refresh_payload, settings.SECRET_KEY, algorithm="HS256")
 
-        return {"access": access_token, "refresh": refresh_token}
+        return {
+            "ResponseCode": "000",
+            "ResponseMessage": "Success",
+            "data": {"access": access_token, "refresh": refresh_token},
+        }
 
     @staticmethod
     def refresh_access_token(refresh_token):
@@ -86,8 +92,8 @@ class JWTAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed("Token has been revoked")
         try:
             payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=["HS256"])
-            print("token type------",payload.get("type"))
-            if payload.get("type") != "refresh":
+
+            if payload.get("token_type") != "refresh":
                 raise exceptions.AuthenticationFailed("Invalid token type for refresh")
         except jwt.ExpiredSignatureError:
             raise exceptions.AuthenticationFailed("Refresh token expired")
@@ -95,4 +101,8 @@ class JWTAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed("Invalid refresh token")
 
         user = User.objects.get(id=payload["user_id"])
-        return JWTAuthentication.generate_tokens(user, two_fa_verified=True)
+        return {
+            "ResponseCode": "000",
+            "ResponseMessage": "Success",
+            "data": JWTAuthentication.generate_tokens(user),
+        }

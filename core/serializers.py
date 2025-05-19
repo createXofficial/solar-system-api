@@ -1,8 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.core.validators import EmailValidator
 
 from rest_framework import serializers
+
+from core.utils import log_action
 
 from .models import AuditLog, Bill, Complaint, Meter, TokenAuditLog, Transaction, UserRole
 
@@ -14,31 +17,38 @@ class TwoFactorCodeSerializer(serializers.Serializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(
-        write_only=True, required=True, validators=[validate_password])
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
 
     class Meta:
         model = User
-        fields = ("username", "email", "password", "role")
+        fields = ("email", "first_name", "last_name", "gender", "phone", "password", "role")
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "A user with this email already exists.")
+            raise serializers.ValidationError("A user with this email already exists.")
+        try:
+            validator = EmailValidator(message="Invalid email format.", code="invalid_email")
+            validator(value)
+        except ValidationError as e:
+            raise serializers.ValidationError(e.message)
         return value
 
-    def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError(
-                "A user with this username already exists.")
+    def validate_phone(self, value):
+        if User.objects.filter(phone=value).exists():
+            raise serializers.ValidationError("A user with this phone number already exists.")
         return value
 
     def create(self, validated_data):
-        user = User.objects.create_user(
-            username=validated_data["username"],
-            email=validated_data["email"],
-            password=validated_data["password"],
-            role=validated_data["role"],
+
+        email = validated_data.get("email")
+        validated_data["username"] = email  # set username as email
+        user = User.objects.create_user(**validated_data)
+
+        log_action(
+            user=user,
+            model_name="User",
+            action="created",
+            description=f"New user registered with email: {user.email}",
         )
         return user
 
@@ -48,12 +58,13 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
-            "username",
             "email",
+            "first_name",
+            "last_name",
             "role",
             "dob",
             "address",
-            "telephone",
+            "phone",
             "gender",
         ]
 
@@ -77,7 +88,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 class UserSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "username", "email", "telephone", "gender"]
+        fields = ["id", "first_name", "last_name", "email", "phone", "gender"]
 
 
 class MeterSerializer(serializers.ModelSerializer):
@@ -103,14 +114,12 @@ class MeterSerializer(serializers.ModelSerializer):
 
     def validate_owner(self, value):
         if value.role != UserRole.CUSTOMER:
-            raise serializers.ValidationError(
-                "Meter owner must be a customer.")
+            raise serializers.ValidationError("Meter owner must be a customer.")
         return value
 
     def validate_installed_by(self, value):
         if value.role not in [UserRole.ADMIN, UserRole.TECHNICIAN]:
-            raise serializers.ValidationError(
-                "Installer must be an admin or technician.")
+            raise serializers.ValidationError("Installer must be an admin or technician.")
         return value
 
 
@@ -147,8 +156,7 @@ class BillSerializer(serializers.ModelSerializer):
     meter_id = serializers.PrimaryKeyRelatedField(
         queryset=Meter.objects.all(), source="meter", write_only=True
     )
-    status_display = serializers.CharField(
-        source="get_status_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
     remaining_amount = serializers.SerializerMethodField()
 
     class Meta:
@@ -178,8 +186,7 @@ class ApplyTokenSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid token provided.")
 
         if transaction.is_applied:
-            raise serializers.ValidationError(
-                "Token has already been applied.")
+            raise serializers.ValidationError("Token has already been applied.")
 
         if transaction.is_expired():
             raise serializers.ValidationError("This token has expired.")
@@ -206,8 +213,6 @@ class EmailSerializer(serializers.Serializer):
 
 
 class PasswordResetSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    token = serializers.CharField()
     new_password = serializers.CharField(write_only=True)
     confirm_new_password = serializers.CharField(write_only=True)
 
@@ -233,11 +238,13 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "action",
             "description",
             "timestamp",
+            "metadata",
+            "success",
         ]
 
     def get_user_display(self, obj):
-        if obj.user and obj.user.is_active:
-            return obj.user.username
+        if obj.user:
+            return obj.user.get_full_name()
         elif obj.user_snapshot:
-            return f"{obj.user_snapshot} (Deleted)"
+            return f"{obj.user_snapshot} - [Deleted Account])"
         return "Unknown"
