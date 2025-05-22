@@ -2,8 +2,8 @@ import random
 import uuid
 from datetime import date, timedelta
 
-from auditlog.models import AuditlogHistoryField, LogEntry
-from auditlog.registry import auditlog
+# from auditlog.models import AuditlogHistoryField, LogEntry
+# from auditlog.registry import auditlog
 from dateutil.relativedelta import relativedelta
 
 from django.contrib.auth.models import AbstractUser
@@ -18,7 +18,7 @@ class UserRole(models.TextChoices):
 
 
 class User(AbstractUser):
-    history = AuditlogHistoryField()
+    
     ROLE_CHOICES = (
         ("admin", "Admin"),
         ("customer", "Customer"),
@@ -42,11 +42,11 @@ class User(AbstractUser):
         return Bill.objects.filter(meter__owner=self)
 
 
-auditlog.register(User)
+#auditlog.register(User)
 
 
 class TwoFactorCode(models.Model):
-    history = AuditlogHistoryField()
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -60,7 +60,7 @@ class TwoFactorCode(models.Model):
         return f"{random.randint(100000, 999999)}"
 
 
-auditlog.register(TwoFactorCode)
+#auditlog.register(TwoFactorCode)
 
 
 def generate_token():
@@ -71,7 +71,7 @@ def generate_token():
 
 
 class Meter(models.Model):
-    history = AuditlogHistoryField()
+    
     METER_STATUS = (
         ("active", "Active"),
         ("inactive", "Inactive"),
@@ -91,16 +91,18 @@ class Meter(models.Model):
     )
     date_installed = models.DateField(auto_now_add=True)
     credit_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    description = models.TextField(max_length=400,null=True,blank=True)
+    meter_type = models.TextField(max_length=30,null=True,blank=True)
 
     def __str__(self):
         return f"Meter {self.meter_number} - {self.owner.get_full_name()}"
 
 
-auditlog.register(Meter)
+#auditlog.register(Meter)
 
 
 class Transaction(models.Model):
-    history = AuditlogHistoryField()
+    
     meter = models.ForeignKey(Meter, on_delete=models.CASCADE, related_name="transactions")
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     token = models.CharField(max_length=20, default=generate_token, unique=True, db_index=True)
@@ -154,7 +156,7 @@ class Transaction(models.Model):
         return f"Transaction {self.token} - {self.amount} GHS"
 
 
-auditlog.register(Transaction)
+#auditlog.register(Transaction)
 
 
 class ComplaintStatus(models.Model):
@@ -165,7 +167,7 @@ class ComplaintStatus(models.Model):
 
 
 class Complaint(models.Model):
-    history = AuditlogHistoryField()
+    
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="complaints")
     technician = models.ForeignKey(
         User,
@@ -188,11 +190,11 @@ class Complaint(models.Model):
         return f"Complaint by {self.customer.get_short_name}"
 
 
-auditlog.register(Complaint)
+#auditlog.register(Complaint)
 
 
 class Bill(models.Model):
-    history = AuditlogHistoryField()
+    
     BILL_STATUS = (
         ("pending", "Pending"),
         ("paid", "Paid"),
@@ -259,11 +261,11 @@ class Bill(models.Model):
         super().save(*args, **kwargs)
 
 
-auditlog.register(Bill)
+#auditlog.register(Bill)
 
 
 class TokenAuditLog(models.Model):
-    history = AuditlogHistoryField()
+    
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, related_name="audit_logs"
     )
@@ -276,7 +278,7 @@ class TokenAuditLog(models.Model):
         return f"AuditLog: {self.transaction.token} on {self.meter.meter_number}"
 
 
-auditlog.register(TokenAuditLog)
+#auditlog.register(TokenAuditLog)
 
 
 class AuditLog(models.Model):

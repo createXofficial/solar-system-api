@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     "drf_yasg",
     "django_auto_logout",
     "django_extensions",
-    "auditlog",
+    # "auditlog",
     # Project apps
     "core",
     "corsheaders",
@@ -64,7 +64,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django_auto_logout.middleware.auto_logout",
     "core.middleware.CurrentUserMiddleware",
-    "auditlog.middleware.AuditlogMiddleware",
+    # "auditlog.middleware.AuditlogMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -92,14 +92,21 @@ WSGI_APPLICATION = "config.wsgi.application"
 # ---------------------------------------------------
 # Database
 # ---------------------------------------------------
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": config("POSTGRES_DB"),
+#         "USER": config("POSTGRES_USER"),
+#         "PASSWORD": config("POSTGRES_PASSWORD"),
+#         "HOST": config("POSTGRES_HOST", default="localhost"),
+#         "PORT": config("POSTGRES_PORT", default="5432"),
+#     }
+# }
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("POSTGRES_DB"),
-        "USER": config("POSTGRES_USER"),
-        "PASSWORD": config("POSTGRES_PASSWORD"),
-        "HOST": config("POSTGRES_HOST", default="localhost"),
-        "PORT": config("POSTGRES_PORT", default="5432"),
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 

@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:d94f81c14c4fe45efb01f18b6d49123891dbdced1d25503f96e5fd04f147e6a2"
+content_hash = "sha256:64756a85b3c5832945a7a5430cfc648242040cadcc73307f9901abcdede3d248"
 
 [[metadata.targets]]
 requires_python = ">=3.10"
@@ -116,6 +116,21 @@ files = [
 ]
 
 [[package]]
+name = "django-auditlog"
+version = "3.1.2"
+requires_python = ">=3.9"
+summary = "Audit log app for Django"
+groups = ["default"]
+dependencies = [
+    "Django>=4.2",
+    "python-dateutil>=2.7.0",
+]
+files = [
+    {file = "django_auditlog-3.1.2-py3-none-any.whl", hash = "sha256:6432a83fdf4397a726488d101fedcb62daafd6d4b825a0fc4c50e3657f5883cd"},
+    {file = "django_auditlog-3.1.2.tar.gz", hash = "sha256:435345b4055d16abfb4ada4bf11320f9e2f6d343874464471fa0041f13f3a474"},
+]
+
+[[package]]
 name = "django-auto-logout"
 version = "0.5.1"
 summary = "Auto logout a user after specific time in Django"
@@ -123,6 +138,21 @@ groups = ["default"]
 files = [
     {file = "django-auto-logout-0.5.1.tar.gz", hash = "sha256:cf5622d60ae42c9e799ab32948b98ce007be570ec34e718e5c47340793dd76f9"},
     {file = "django_auto_logout-0.5.1-py3-none-any.whl", hash = "sha256:0a5f7b88b78fdcc14d7359654d61f1ad264d0028b7fdbd2cb64479ab05ddbb10"},
+]
+
+[[package]]
+name = "django-cors-headers"
+version = "4.7.0"
+requires_python = ">=3.9"
+summary = "django-cors-headers is a Django application for handling the server headers required for Cross-Origin Resource Sharing (CORS)."
+groups = ["default"]
+dependencies = [
+    "asgiref>=3.6",
+    "django>=4.2",
+]
+files = [
+    {file = "django_cors_headers-4.7.0-py3-none-any.whl", hash = "sha256:f1c125dcd58479fe7a67fe2499c16ee38b81b397463cf025f0e2c42937421070"},
+    {file = "django_cors_headers-4.7.0.tar.gz", hash = "sha256:6fdf31bf9c6d6448ba09ef57157db2268d515d94fc5c89a0a1028e1fc03ee52b"},
 ]
 
 [[package]]

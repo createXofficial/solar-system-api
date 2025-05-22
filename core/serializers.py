@@ -21,7 +21,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "gender", "phone", "password", "role")
+        fields = ("email", "first_name","address","dob", "last_name", "gender", "phone", "password", "role")
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -107,6 +107,8 @@ class MeterSerializer(serializers.ModelSerializer):
             "owner_details",  # read-only nested
             "location",
             "status",
+            "description",
+            "meter_type",
             "credit_balance",
             "date_installed",
             "installed_by",  # for writing

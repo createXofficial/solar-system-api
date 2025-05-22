@@ -98,8 +98,7 @@ class LoginView(APIView):
             {
                 "responseCode": "111",
                 "responseMessage": "Invalid credentials.",
-            },
-            status=status.HTTP_401_UNAUTHORIZED,
+            }
         )
 
 
