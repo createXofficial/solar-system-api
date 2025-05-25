@@ -224,6 +224,38 @@ class ApplyTokenSerializer(serializers.Serializer):
         return value
 
 
+# Serializers for summary
+class TransactionSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transaction
+        fields = ["id", "amount", "token", "status", "created_at"]
+
+
+class BillSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Bill
+        fields = ["id", "amount_due", "due_date", "status"]
+
+
+class MeterSummarySerializer(serializers.ModelSerializer):
+    bills = BillSummarySerializer(many=True, source="bill_set", read_only=True)
+    transactions = TransactionSummarySerializer(many=True, source="transaction_set", read_only=True)
+
+    class Meta:
+        model = Meter
+        fields = ["id", "meter_number", "location", "status", "bills", "transactions"]
+
+
+class DebtorSummarySerializer(serializers.Serializer):
+    full_name = serializers.CharField()
+    email = serializers.EmailField()
+    phone = serializers.CharField()
+    gender = serializers.CharField()
+    meter = MeterSummarySerializer()
+    total_owing = serializers.DecimalField(max_digits=10, decimal_places=2)
+    due_date = serializers.DateField()
+
+
 class TokenAuditLogSerializer(serializers.ModelSerializer):
     transaction = TransactionSerializer(read_only=True)
     meter = MeterSerializer(read_only=True)

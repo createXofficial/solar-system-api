@@ -9,6 +9,7 @@ from .views import (
     BillViewSet,
     ComplaintViewSet,
     CustomerViewSet,
+    DebtorsViewSet,
     MeterViewSet,
     TokenAuditLogViewSet,
     TransactionViewSet,
@@ -60,6 +61,7 @@ urlpatterns = [
     # Users
     path("users/<int:user_id>/", UserDetailUpdateDeleteView.as_view(), name="user-detail"),
     path("users/", UserListView.as_view(), name="user-list"),
+    path("debtors/", DebtorsViewSet.as_view({"get": "list"}), name="debtor-list"),
     # audit logs
     path("audit-logs/", AuditLogViewSet.as_view({"get": "list"}), name="auditlog"),
 ]

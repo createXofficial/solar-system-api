@@ -1,12 +1,14 @@
 import logging
 
 from django.db import transaction as db_transaction
+from django.db.models import F, Min, Q, Sum
 from django.utils import timezone
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -19,6 +21,7 @@ from .serializers import (
     AuditLogSerializer,
     BillSerializer,
     ComplaintSerializer,
+    DebtorSummarySerializer,
     MeterSerializer,
     TokenAuditLogSerializer,
     TransactionSerializer,
@@ -110,6 +113,9 @@ class MeterViewSet(viewsets.ModelViewSet):
 
     serializer_class = MeterSerializer
     permission_classes = [IsAuthenticated, IsCustomerOwner]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["owner"]
+    search_fields = ["meter_number", "owner__email"]
 
     def get_queryset(self):
         user = self.request.user
@@ -117,14 +123,10 @@ class MeterViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Authentication required or role missing.")
 
         queryset = Meter.objects.all().order_by("id")
-        owner_id = self.request.query_params.get("owner")
+        # owner_id = self.request.query_params.get("owner")
         if user.role == "admin":
-            if owner_id:
-                return queryset.filter(owner__id=owner_id)
             return queryset
 
-        if owner_id:
-            return queryset.filter(owner__id=owner_id)
         return queryset.filter(owner=user)
 
     def perform_create(self, serializer):
@@ -168,6 +170,9 @@ class MeterViewSet(viewsets.ModelViewSet):
 
 class TransactionViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.select_related("meter", "meter__owner").all().order_by("id")
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["meter__owner", "is_applied"]
+    search_fields = ["meter__meter_number", "token"]
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
 
@@ -243,6 +248,70 @@ class TransactionViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class DebtorsViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        if request.user.role != "admin":
+            return Response(
+                {
+                    "responseCode": "111",
+                    "responseMessage": "You do not have permission to view this data.",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        customers = User.objects.filter(role="customer")
+        debtors = []
+
+        for customer in customers:
+            unpaid_bills = Bill.objects.filter(
+                meter__owner=customer, status="pending"
+            ).select_related("meter")
+
+            meter = unpaid_bills.first().meter
+
+            if unpaid_bills.exists():
+                amount_owing = unpaid_bills.aggregate(total_due=Sum("amount_due"))["total_due"] or 0
+
+                earliest_due = unpaid_bills.aggregate(next_due=Min("due_date"))["next_due"]
+
+                # Get unique meters related to unpaid bills
+                meters = []
+                seen_meter_ids = set()
+                for bill in unpaid_bills:
+                    meter = bill.meter
+                    if meter.id not in seen_meter_ids:
+                        seen_meter_ids.add(meter.id)
+                        meters.append(
+                            {
+                                "meter_number": meter.meter_number,
+                                "location": meter.location,
+                                "status": meter.status,
+                            }
+                        )
+
+                debtors.append(
+                    {
+                        "full_name": f"{customer.first_name} {customer.last_name}".strip(),
+                        "meter": meter,
+                        "email": customer.email,
+                        "phone": customer.phone,
+                        "gender": customer.gender,
+                        "total_owing": amount_owing,
+                        "due_date": earliest_due,
+                    }
+                )
+
+        serializer = DebtorSummarySerializer(debtors, many=True)
+        return Response(
+            {
+                "responseCode": "000",
+                "responseMessage": "Debtors retrieved successfully.",
+                "data": serializer.data,
+            }
+        )
+
+
 class TokenAuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = TokenAuditLog.objects.all().order_by("id")
     serializer_class = TokenAuditLogSerializer
@@ -262,6 +331,9 @@ class ComplaintViewSet(viewsets.ModelViewSet):
     serializer_class = ComplaintSerializer
     permission_classes = [IsAuthenticated]
 
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["customer"]
+
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated or not hasattr(user, "role"):
@@ -275,7 +347,7 @@ class ComplaintViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         instance = serializer.save()
         log_action(
-            user=self.request.user.get_short_name(),
+            user=self.request.user,
             model_name="Complaint",
             action="created",
             description=f"Created complaint {instance.id} by user {self.request.user.first_name}",
@@ -364,7 +436,7 @@ class BillViewSet(viewsets.ModelViewSet):
     serializer_class = BillSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
-    filterset_fields = ["status"]
+    filterset_fields = ["status", "meter__owner"]
     search_fields = ["meter__meter_number"]
     ordering_fields = ["due_date"]
 
@@ -397,7 +469,7 @@ class BillViewSet(viewsets.ModelViewSet):
         changes = get_changes(old_data, new_data)
 
         log_action(
-            user=self.request.user.get_short_name(),
+            user=self.request.user,
             model_name="Bill",
             action="updated",
             description=f"Updated bill {instance.id}",
@@ -497,7 +569,6 @@ class CustomerViewSet(viewsets.ViewSet):
 
 class IsAdminUserOrStaff(permissions.BasePermission):
     def has_permission(self, request, view):
-        print(request.user)
         return request.user and (request.user.is_staff or request.user.role == "admin")
 
 
