@@ -401,7 +401,6 @@ class UserListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        print("user--", request.user)
         if not request.user.role == "admin":
             return Response(
                 {

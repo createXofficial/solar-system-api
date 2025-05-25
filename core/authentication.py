@@ -44,7 +44,6 @@ class JWTAuthentication(BaseAuthentication):
             new_tokens = self.generate_tokens(
                 user, two_fa_verified=payload.get("2fa_verified", False)
             )
-            print("New tokens generated:", new_tokens)
             request.META["RENEWED_TOKEN"] = new_tokens["data"]["access"]
 
         return (user, token)

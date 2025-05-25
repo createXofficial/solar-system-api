@@ -107,6 +107,7 @@ class ApplyTokenView(views.APIView):
 
 
 class MeterViewSet(viewsets.ModelViewSet):
+
     serializer_class = MeterSerializer
     permission_classes = [IsAuthenticated, IsCustomerOwner]
 
@@ -116,8 +117,14 @@ class MeterViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Authentication required or role missing.")
 
         queryset = Meter.objects.all().order_by("id")
+        owner_id = self.request.query_params.get("owner")
         if user.role == "admin":
+            if owner_id:
+                return queryset.filter(owner__id=owner_id)
             return queryset
+
+        if owner_id:
+            return queryset.filter(owner__id=owner_id)
         return queryset.filter(owner=user)
 
     def perform_create(self, serializer):

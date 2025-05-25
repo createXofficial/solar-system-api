@@ -21,7 +21,17 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("email", "first_name","address","dob", "last_name", "gender", "phone", "password", "role")
+        fields = (
+            "email",
+            "first_name",
+            "address",
+            "dob",
+            "last_name",
+            "gender",
+            "phone",
+            "password",
+            "role",
+        )
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -148,9 +158,22 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class ComplaintSerializer(serializers.ModelSerializer):
+    customer = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    customer_details = UserSummarySerializer(source="customer", read_only=True)
+
     class Meta:
         model = Complaint
-        fields = "__all__"
+        fields = [
+            "id",
+            "subject",
+            "message",
+            "priority",
+            "created_at",
+            "customer",  # for writing
+            "customer_details",  # read-only nested
+            "technician",
+            "status",
+        ]
 
 
 class BillSerializer(serializers.ModelSerializer):
