@@ -25,6 +25,9 @@ SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DJANGO_DEBUG", cast=bool, default=False)
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
+
+CORS_ORIGIN_ALLOW_ALL = True
+
 # ---------------------------------------------------
 # Installed Apps
 # ---------------------------------------------------
@@ -41,14 +44,18 @@ INSTALLED_APPS = [
     "drf_yasg",
     "django_auto_logout",
     "django_extensions",
-    # Project apps
     "core",
+    "corsheaders",
+
 ]
 
 # ---------------------------------------------------
 # Middleware
 # ---------------------------------------------------
 MIDDLEWARE = [
+
+    "corsheaders.middleware.CorsMiddleware",
+
     # "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -59,6 +66,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django_auto_logout.middleware.auto_logout",
     "core.middleware.CurrentUserMiddleware",
+
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -86,6 +94,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # ---------------------------------------------------
 # Database
 # ---------------------------------------------------
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -128,6 +137,7 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ),
+
     "DEFAULT_ORDERING": ["-id"],
     "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.NamespaceVersioning",
 }
@@ -152,16 +162,13 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 # ---------------------------------------------------
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # For development
-# EMAIL_HOST = config('EMAIL_HOST')
-# EMAIL_PORT = config('EMAIL_PORT', cast=int)
-# EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-# EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-# EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
-EMAIL_USE_TLS = True
-EMAIL_FROM_ADDRESS = "noreply - delft.care <noreply@delft.care>"
-EMAIL_HOST = "smtp.office365.com"
-EMAIL_HOST_PASSWORD = "1ZQ0nmzg%8i$s3F*a@Qxsgrw0SZMW*cF"
-EMAIL_HOST_USER = "noreply@delft.care"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+EMAIL_PORT = 465
+EMAIL_HOST_USER = "creatextesting@gmail.com"
+EMAIL_HOST_PASSWORD = "vbfaclenjpxwclts"
+
 
 
 # ---------------------------------------------------

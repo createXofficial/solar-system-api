@@ -9,6 +9,7 @@ from .views import (
     BillViewSet,
     ComplaintViewSet,
     CustomerViewSet,
+    DebtorsViewSet,
     MeterViewSet,
     TokenAuditLogViewSet,
     TransactionViewSet,
@@ -23,6 +24,7 @@ from .views_auth import (
     PasswordResetConfirmView,
     RefreshTokenView,
     RegisterView,
+    SessionCheckView,
     TwoFactorVerifyView,
     UserDetailUpdateDeleteView,
     UserListView,
@@ -53,11 +55,16 @@ urlpatterns = [
         name="password-reset-confirm",
     ),
     path("auth/token/refresh/", RefreshTokenView.as_view(), name="token_refresh"),
+
+    path("auth/session-check/", SessionCheckView.as_view(), name="session-check"),
+
     # Token
     path("apply-token/", ApplyTokenView.as_view(), name="apply-token"),
     # Users
     path("users/<int:user_id>/", UserDetailUpdateDeleteView.as_view(), name="user-detail"),
     path("users/", UserListView.as_view(), name="user-list"),
+    path("debtors/", DebtorsViewSet.as_view({"get": "list"}), name="debtor-list"),
+
     # audit logs
     path("audit-logs/", AuditLogViewSet.as_view({"get": "list"}), name="auditlog"),
 ]

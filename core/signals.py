@@ -25,31 +25,3 @@ def log_create_or_update(sender, instance, created, **kwargs):
         or getattr(instance, "owner", None)
         or getattr(instance, "customer", None)
     )
-
-    AuditLog.objects.create(
-        user=user,
-        model_name=sender.__name__,
-        action="created" if created else "updated",
-        description=get_instance_description(instance),
-        timestamp=now(),
-    )
-
-
-@receiver(post_delete)
-def log_delete(sender, instance, **kwargs):
-    if sender not in MONITORED_MODELS:
-        return
-
-    user = (
-        get_current_user()
-        or getattr(instance, "owner", None)
-        or getattr(instance, "customer", None)
-    )
-
-    AuditLog.objects.create(
-        user=user,
-        model_name=sender.__name__,
-        action="deleted",
-        description=get_instance_description(instance),
-        timestamp=now(),
-    )

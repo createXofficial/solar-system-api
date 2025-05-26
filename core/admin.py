@@ -21,15 +21,19 @@ class TokenAuditLogInline(admin.TabularInline):
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ("username", "email", "role", "is_active")
-    search_fields = ("username", "email")
+    list_display = ("first_name", "last_name", "email", "role", "is_active")
+    search_fields = ("first_name", "last_name", "email")
     list_filter = ("role",)
+    ordering = ("-date_joined",)
+    date_hierarchy = "date_joined"
+
 
 
 @admin.register(Meter)
 class MeterAdmin(admin.ModelAdmin):
     list_display = ("meter_number", "owner", "location", "status", "credit_balance")
-    search_fields = ("meter_number", "owner__username")
+    search_fields = ("meter_number", "owner", "location")
+
     list_filter = ("status",)
 
     # 🔹 Fieldsets for better field grouping
@@ -58,7 +62,8 @@ def mark_resolved(modeladmin, request, queryset):
 @admin.register(Complaint)
 class ComplaintAdmin(admin.ModelAdmin):
     list_display = ("customer", "technician", "subject", "status", "created_at")
-    search_fields = ("customer__username", "subject")
+    search_fields = ("customer__phone", "subject")
+
     list_filter = ("status",)
     actions = [mark_resolved]
 
@@ -76,7 +81,8 @@ class TokenAuditLogAdmin(admin.ModelAdmin):
     search_fields = (
         "transaction__token",
         "meter__meter_number",
-        "applied_by__username",
+        "applied_by__first_name",
+
     )
     list_filter = ("applied_at",)
 
@@ -91,9 +97,30 @@ class ComplaintStatusAdmin(admin.ModelAdmin):
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ("user_snapshot", "model_name", "action", "timestamp")
-    search_fields = ("user_snapshot", "model_name", "description")
-    list_filter = ("action", "model_name", "timestamp")
+
+    list_display = (
+        "id",
+        "model_name",
+        "action",
+        "user_snapshot",
+        "timestamp",
+        "success",
+        "description",
+        "metadata",
+    )
+    list_filter = ("model_name", "action", "success", "timestamp")
+    search_fields = ("description", "model_name", "user_snapshot", "metadata")
 
     # 🔹 Read-only audit fields
-    readonly_fields = ("model_name", "action", "user", "timestamp")
+    readonly_fields = (
+        "model_name",
+        "action",
+        "user_snapshot",
+        "success",
+        "description",
+        "metadata",
+        "timestamp",
+    )
+
+    date_hierarchy = "timestamp"
+    ordering = ("-timestamp",)

@@ -16,6 +16,7 @@ class UserRole(models.TextChoices):
 
 
 class User(AbstractUser):
+    
     ROLE_CHOICES = (
         ("admin", "Admin"),
         ("customer", "Customer"),
@@ -24,12 +25,17 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.CUSTOMER)
     dob = models.DateField(null=True, blank=True)
     address = models.TextField(blank=True)
-    telephone = models.CharField(max_length=15, blank=True)
+    email = models.EmailField(unique=True, db_index=True)
+    first_name = models.CharField(max_length=30, blank=True)
+    last_name = models.CharField(max_length=30, blank=True)
+    phone = models.CharField(max_length=15, blank=True)
+
     gender = models.CharField(max_length=10, blank=True)
     last_2fa_verified = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.username} ({self.role})"
+        return f"{self.get_full_name()} - ({self.role})"
+
 
     @property
     def all_bills(self):
@@ -58,7 +64,36 @@ def generate_token():
     return str(uuid.uuid4()).replace("-", "")[:10]
 
 
+#auditlog.register(User)
+
+
+class TwoFactorCode(models.Model):
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    @staticmethod
+    def generate_code():
+        return f"{random.randint(100000, 999999)}"
+
+
+#auditlog.register(TwoFactorCode)
+
+
+def generate_token():
+    return str(uuid.uuid4()).replace("-", "")[:10]
+
+    def __str__(self):
+        return self.name
+
+
 class Meter(models.Model):
+    
     METER_STATUS = (
         ("active", "Active"),
         ("inactive", "Inactive"),
@@ -78,9 +113,11 @@ class Meter(models.Model):
     )
     date_installed = models.DateField(auto_now_add=True)
     credit_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    description = models.TextField(max_length=400,null=True,blank=True)
+    meter_type = models.TextField(max_length=30,null=True,blank=True)
 
     def __str__(self):
-        return f"Meter {self.meter_number} - {self.owner.username}"
+        return f"Meter {self.meter_number} - {self.owner.get_full_name()}"
 
 
 class Transaction(models.Model):
@@ -137,6 +174,7 @@ class Transaction(models.Model):
         return f"Transaction {self.token} - {self.amount} GHS"
 
 
+
 class ComplaintStatus(models.Model):
     name = models.CharField(max_length=50)
 
@@ -164,10 +202,12 @@ class Complaint(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     def __str__(self):
-        return f"Complaint by {self.customer.username}"
+        return f"Complaint by {self.customer.get_short_name}"
+
 
 
 class Bill(models.Model):
+    
     BILL_STATUS = (
         ("pending", "Pending"),
         ("paid", "Paid"),
@@ -235,6 +275,8 @@ class Bill(models.Model):
 
 
 class TokenAuditLog(models.Model):
+    
+
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, related_name="audit_logs"
     )
@@ -249,26 +291,37 @@ class TokenAuditLog(models.Model):
 
 class AuditLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    user_snapshot = models.CharField(max_length=150, blank=True)  # store username even if deleted
+    user_snapshot = models.CharField(
+        max_length=150, blank=True
+    )  # store actor's name even if deleted
     model_name = models.CharField(max_length=100)
+    success = models.BooleanField(default=True)
+
     action = models.CharField(
-        max_length=10,
+        max_length=50,
         choices=(
             ("created", "Created"),
             ("updated", "Updated"),
             ("deleted", "Deleted"),
+            ("logged_in", "Logged In"),
+            ("logged_out", "Logged Out"),
+            ("password_reset", "Password Reset"),
+            ("password_changed", "Password Changed"),
+
         ),
     )
     description = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+    metadata = models.JSONField(default=dict, blank=True)
 
     def save(self, *args, **kwargs):
         if self.user and not self.user_snapshot:
-            self.user_snapshot = self.user.username
+            self.user_snapshot = f"{self.user.get_full_name()} ({self.user.email})"
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.action.title()} {self.model_name} by {self.user_snapshot or 'Unknown'}"
+        return f"{self.user_snapshot or 'Unknown'} {self.action.title()} {self.model_name}"
+
 
 
 class BlacklistedToken(models.Model):

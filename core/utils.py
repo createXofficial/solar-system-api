@@ -41,24 +41,37 @@ def create_jwt_pair_for_user(user):
 def invalidate_old_tokens(user):
     BlacklistedToken.objects.filter(user=user).delete()
 
-
-def log_user_action(user, action):
-    AuditLog.objects.create(user=user, action=action, timestamp=timezone.now())
-
-
 from core.models import AuditLog
 
 
-def create_audit_log(user, model_name, action, description="", object_id=None):
+def log_action(
+    user,
+    model_name,
+    action,
+    description="",
+    status=True,
+    metadata=None,
+):
+    """Logs an action to the audit trail."""
     AuditLog.objects.create(
-        user=user,
-        user_snapshot=user.username if user else "Anonymous-User",
+        user=user if user else None,
+        success=status,
         model_name=model_name,
         action=action,
-        timestamp=timezone.now(),
         description=description,
-        object_id=str(object_id) if object_id else None,
+        metadata=metadata or {},
+        timestamp=timezone.now(),
     )
+
+
+def get_changes(old_instance, new_data):
+    changes = {}
+    for field, new_value in new_data.items():
+        old_value = getattr(old_instance, field, None)
+        if old_value != new_value:
+            changes[field] = {"from": str(old_value), "to": str(new_value)}
+    return changes
+
 
 
 def generate_meter_token(transaction):

@@ -2,7 +2,12 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
+from django.core.validators import EmailValidator
+
 from rest_framework import serializers
+
+from core.utils import log_action
+
 
 from .models import AuditLog, Bill, Complaint, Meter, TokenAuditLog, Transaction, UserRole
 
@@ -18,24 +23,47 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("username", "email", "password", "role")
+
+        fields = (
+            "email",
+            "first_name",
+            "address",
+            "dob",
+            "last_name",
+            "gender",
+            "phone",
+            "password",
+            "role",
+        )
+
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
+        try:
+            validator = EmailValidator(message="Invalid email format.", code="invalid_email")
+            validator(value)
+        except ValidationError as e:
+            raise serializers.ValidationError(e.message)
         return value
 
-    def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("A user with this username already exists.")
+    def validate_phone(self, value):
+        if User.objects.filter(phone=value).exists():
+            raise serializers.ValidationError("A user with this phone number already exists.")
         return value
 
     def create(self, validated_data):
-        user = User.objects.create_user(
-            username=validated_data["username"],
-            email=validated_data["email"],
-            password=validated_data["password"],
-            role=validated_data["role"],
+
+        email = validated_data.get("email")
+        validated_data["username"] = email  # set username as email
+        user = User.objects.create_user(**validated_data)
+
+        log_action(
+            user=user,
+            model_name="User",
+            action="created",
+            description=f"New user registered with email: {user.email}",
+
         )
         return user
 
@@ -45,12 +73,13 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
-            "username",
             "email",
+            "first_name",
+            "last_name",
             "role",
             "dob",
             "address",
-            "telephone",
+            "phone",
             "gender",
         ]
 
@@ -74,7 +103,8 @@ class ChangePasswordSerializer(serializers.Serializer):
 class UserSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "username", "email", "telephone", "gender"]
+        fields = ["id", "first_name", "last_name", "email", "phone", "gender"]
+
 
 
 class MeterSerializer(serializers.ModelSerializer):
@@ -93,6 +123,8 @@ class MeterSerializer(serializers.ModelSerializer):
             "owner_details",  # read-only nested
             "location",
             "status",
+            "description",
+            "meter_type",
             "credit_balance",
             "date_installed",
             "installed_by",  # for writing
@@ -132,9 +164,23 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class ComplaintSerializer(serializers.ModelSerializer):
+    customer = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    customer_details = UserSummarySerializer(source="customer", read_only=True)
+
     class Meta:
         model = Complaint
-        fields = "__all__"
+        fields = [
+            "id",
+            "subject",
+            "message",
+            "priority",
+            "created_at",
+            "customer",  # for writing
+            "customer_details",  # read-only nested
+            "technician",
+            "status",
+        ]
+
 
 
 class BillSerializer(serializers.ModelSerializer):
@@ -185,6 +231,39 @@ class ApplyTokenSerializer(serializers.Serializer):
         return value
 
 
+# Serializers for summary
+class TransactionSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transaction
+        fields = ["id", "amount", "token", "status", "created_at"]
+
+
+class BillSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Bill
+        fields = ["id", "amount_due", "due_date", "status"]
+
+
+class MeterSummarySerializer(serializers.ModelSerializer):
+    bills = BillSummarySerializer(many=True, source="bill_set", read_only=True)
+    transactions = TransactionSummarySerializer(many=True, source="transaction_set", read_only=True)
+
+    class Meta:
+        model = Meter
+        fields = ["id", "meter_number", "location", "status", "bills", "transactions"]
+
+
+class DebtorSummarySerializer(serializers.Serializer):
+    full_name = serializers.CharField()
+    email = serializers.EmailField()
+    phone = serializers.CharField()
+    gender = serializers.CharField()
+    meter = MeterSummarySerializer()
+    total_owing = serializers.DecimalField(max_digits=10, decimal_places=2)
+    due_date = serializers.DateField()
+
+
+
 class TokenAuditLogSerializer(serializers.ModelSerializer):
     transaction = TransactionSerializer(read_only=True)
     meter = MeterSerializer(read_only=True)
@@ -199,8 +278,6 @@ class EmailSerializer(serializers.Serializer):
 
 
 class PasswordResetSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    token = serializers.CharField()
     new_password = serializers.CharField(write_only=True)
     confirm_new_password = serializers.CharField(write_only=True)
 
@@ -226,11 +303,14 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "action",
             "description",
             "timestamp",
+            "metadata",
+            "success",
         ]
 
     def get_user_display(self, obj):
-        if obj.user and obj.user.is_active:
-            return obj.user.username
+        if obj.user:
+            return obj.user.get_full_name()
         elif obj.user_snapshot:
-            return f"{obj.user_snapshot} (Deleted)"
+            return f"{obj.user_snapshot} - [Deleted Account])"
+
         return "Unknown"
