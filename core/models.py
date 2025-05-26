@@ -16,7 +16,7 @@ class UserRole(models.TextChoices):
 
 
 class User(AbstractUser):
-    
+
     ROLE_CHOICES = (
         ("admin", "Admin"),
         ("customer", "Customer"),
@@ -36,7 +36,6 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.get_full_name()} - ({self.role})"
 
-
     @property
     def all_bills(self):
         return Bill.objects.filter(meter__owner=self)
@@ -46,29 +45,12 @@ class User(AbstractUser):
         self.save()
 
 
-class TwoFactorCode(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    code = models.CharField(max_length=6)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-
-    def is_expired(self):
-        return timezone.now() > self.expires_at
-
-    @staticmethod
-    def generate_code():
-        return f"{random.randint(100000, 999999)}"
-
-
 def generate_token():
     return str(uuid.uuid4()).replace("-", "")[:10]
 
 
-#auditlog.register(User)
-
-
 class TwoFactorCode(models.Model):
-    
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -82,7 +64,7 @@ class TwoFactorCode(models.Model):
         return f"{random.randint(100000, 999999)}"
 
 
-#auditlog.register(TwoFactorCode)
+# auditlog.register(TwoFactorCode)
 
 
 def generate_token():
@@ -93,7 +75,7 @@ def generate_token():
 
 
 class Meter(models.Model):
-    
+
     METER_STATUS = (
         ("active", "Active"),
         ("inactive", "Inactive"),
@@ -113,8 +95,8 @@ class Meter(models.Model):
     )
     date_installed = models.DateField(auto_now_add=True)
     credit_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-    description = models.TextField(max_length=400,null=True,blank=True)
-    meter_type = models.TextField(max_length=30,null=True,blank=True)
+    description = models.TextField(max_length=400, null=True, blank=True)
+    meter_type = models.TextField(max_length=30, null=True, blank=True)
 
     def __str__(self):
         return f"Meter {self.meter_number} - {self.owner.get_full_name()}"
@@ -127,6 +109,11 @@ class Transaction(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_applied = models.BooleanField(default=False)
     expiry_date = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[("pending", "Pending"), ("applied", "Applied"), ("expired", "Expired")],
+        default="pending",
+    )
 
     def apply_token(self):
         if self.is_applied:
@@ -174,7 +161,6 @@ class Transaction(models.Model):
         return f"Transaction {self.token} - {self.amount} GHS"
 
 
-
 class ComplaintStatus(models.Model):
     name = models.CharField(max_length=50)
 
@@ -205,9 +191,8 @@ class Complaint(models.Model):
         return f"Complaint by {self.customer.get_short_name}"
 
 
-
 class Bill(models.Model):
-    
+
     BILL_STATUS = (
         ("pending", "Pending"),
         ("paid", "Paid"),
@@ -275,7 +260,6 @@ class Bill(models.Model):
 
 
 class TokenAuditLog(models.Model):
-    
 
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, related_name="audit_logs"
@@ -307,7 +291,6 @@ class AuditLog(models.Model):
             ("logged_out", "Logged Out"),
             ("password_reset", "Password Reset"),
             ("password_changed", "Password Changed"),
-
         ),
     )
     description = models.TextField()
@@ -321,7 +304,6 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.user_snapshot or 'Unknown'} {self.action.title()} {self.model_name}"
-
 
 
 class BlacklistedToken(models.Model):

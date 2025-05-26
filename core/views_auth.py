@@ -3,7 +3,6 @@ import uuid
 from datetime import timedelta
 
 import jwt
-
 import jwt.utils
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -14,7 +13,6 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import encoding, timezone
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-
 
 from rest_framework import generics, permissions, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -32,7 +30,6 @@ from .serializers import (
     UserSerializer,
 )
 from .utils import get_changes, log_action
-
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +161,6 @@ class TwoFactorVerifyView(APIView):
             )
 
 
-
 class LogoutView(APIView):
     def post(self, request):
         refresh_token = request.data.get("refresh")
@@ -216,7 +212,6 @@ class SessionCheckView(APIView):
                 logout(request)
                 return Response(
                     {
-
                         "responseCode": "111",
                         "responseMessage": "Session error",
                         "data": {
@@ -623,12 +618,12 @@ class RefreshTokenView(APIView):
     def post(self, request):
         refresh_token = request.data.get("refresh")
         if not refresh_token:
+            return Response(
                 {
                     "responseCode": "111",
                     "responseMessage": "Token refresh failed",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
-
             )
 
         try:

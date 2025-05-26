@@ -1,13 +1,15 @@
+from datetime import date
+
+from dateutil.relativedelta import relativedelta
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-
 from django.core.validators import EmailValidator
 
 from rest_framework import serializers
 
 from core.utils import log_action
-
 
 from .models import AuditLog, Bill, Complaint, Meter, TokenAuditLog, Transaction, UserRole
 
@@ -36,7 +38,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             "role",
         )
 
-
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
@@ -63,7 +64,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             model_name="User",
             action="created",
             description=f"New user registered with email: {user.email}",
-
         )
         return user
 
@@ -106,7 +106,6 @@ class UserSummarySerializer(serializers.ModelSerializer):
         fields = ["id", "first_name", "last_name", "email", "phone", "gender"]
 
 
-
 class MeterSerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     owner_details = UserSummarySerializer(source="owner", read_only=True)
@@ -140,6 +139,22 @@ class MeterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Installer must be an admin or technician.")
         return value
 
+    def create(self, validated_data):
+        meter = super().create(validated_data)
+
+        bill = Bill.objects.create(
+            meter=meter,
+            total_amount=100.00,
+            amount_due=100.00,
+            plan_type="installment",
+            due_date=date.today() + relativedelta(months=1),
+            next_due_date=date.today() + relativedelta(months=1),
+            installment_months=6,
+        )
+        bill.setup_installment(months=6)
+
+        return meter
+
 
 class TransactionSerializer(serializers.ModelSerializer):
     meter = MeterSerializer(read_only=True)  # For response display
@@ -166,6 +181,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 class ComplaintSerializer(serializers.ModelSerializer):
     customer = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     customer_details = UserSummarySerializer(source="customer", read_only=True)
+    technician_details = UserSummarySerializer(source="technician", read_only=True)
 
     class Meta:
         model = Complaint
@@ -178,9 +194,9 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "customer",  # for writing
             "customer_details",  # read-only nested
             "technician",
+            "technician_details",  # read-only nested
             "status",
         ]
-
 
 
 class BillSerializer(serializers.ModelSerializer):
@@ -261,7 +277,6 @@ class DebtorSummarySerializer(serializers.Serializer):
     meter = MeterSummarySerializer()
     total_owing = serializers.DecimalField(max_digits=10, decimal_places=2)
     due_date = serializers.DateField()
-
 
 
 class TokenAuditLogSerializer(serializers.ModelSerializer):
