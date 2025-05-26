@@ -24,6 +24,7 @@ dependencies = [
     "django-extensions>=4.1",
     "django-cors-headers>=4.7.0",
     "django-auditlog>=3.1.2",
+
 ]
 requires-python = ">=3.10"
 

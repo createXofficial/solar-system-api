@@ -2,8 +2,6 @@ import random
 import uuid
 from datetime import date, timedelta
 
-# from auditlog.models import AuditlogHistoryField, LogEntry
-# from auditlog.registry import auditlog
 from dateutil.relativedelta import relativedelta
 
 from django.contrib.auth.models import AbstractUser
@@ -31,15 +29,39 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
     phone = models.CharField(max_length=15, blank=True)
+
     gender = models.CharField(max_length=10, blank=True)
     last_2fa_verified = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.get_full_name()} - ({self.role})"
 
+
     @property
     def all_bills(self):
         return Bill.objects.filter(meter__owner=self)
+
+    def soft_delete(self):
+        self.is_active = False
+        self.save()
+
+
+class TwoFactorCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    @staticmethod
+    def generate_code():
+        return f"{random.randint(100000, 999999)}"
+
+
+def generate_token():
+    return str(uuid.uuid4()).replace("-", "")[:10]
 
 
 #auditlog.register(User)
@@ -98,11 +120,7 @@ class Meter(models.Model):
         return f"Meter {self.meter_number} - {self.owner.get_full_name()}"
 
 
-#auditlog.register(Meter)
-
-
 class Transaction(models.Model):
-    
     meter = models.ForeignKey(Meter, on_delete=models.CASCADE, related_name="transactions")
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     token = models.CharField(max_length=20, default=generate_token, unique=True, db_index=True)
@@ -156,8 +174,6 @@ class Transaction(models.Model):
         return f"Transaction {self.token} - {self.amount} GHS"
 
 
-#auditlog.register(Transaction)
-
 
 class ComplaintStatus(models.Model):
     name = models.CharField(max_length=50)
@@ -167,7 +183,6 @@ class ComplaintStatus(models.Model):
 
 
 class Complaint(models.Model):
-    
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="complaints")
     technician = models.ForeignKey(
         User,
@@ -189,8 +204,6 @@ class Complaint(models.Model):
     def __str__(self):
         return f"Complaint by {self.customer.get_short_name}"
 
-
-#auditlog.register(Complaint)
 
 
 class Bill(models.Model):
@@ -261,11 +274,9 @@ class Bill(models.Model):
         super().save(*args, **kwargs)
 
 
-#auditlog.register(Bill)
-
-
 class TokenAuditLog(models.Model):
     
+
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, related_name="audit_logs"
     )
@@ -276,9 +287,6 @@ class TokenAuditLog(models.Model):
 
     def __str__(self):
         return f"AuditLog: {self.transaction.token} on {self.meter.meter_number}"
-
-
-#auditlog.register(TokenAuditLog)
 
 
 class AuditLog(models.Model):
@@ -299,6 +307,7 @@ class AuditLog(models.Model):
             ("logged_out", "Logged Out"),
             ("password_reset", "Password Reset"),
             ("password_changed", "Password Changed"),
+
         ),
     )
     description = models.TextField()
@@ -312,6 +321,7 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.user_snapshot or 'Unknown'} {self.action.title()} {self.model_name}"
+
 
 
 class BlacklistedToken(models.Model):

@@ -1,11 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+
 from django.core.validators import EmailValidator
 
 from rest_framework import serializers
 
 from core.utils import log_action
+
 
 from .models import AuditLog, Bill, Complaint, Meter, TokenAuditLog, Transaction, UserRole
 
@@ -21,6 +23,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
+
         fields = (
             "email",
             "first_name",
@@ -32,6 +35,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             "password",
             "role",
         )
+
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -59,6 +63,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             model_name="User",
             action="created",
             description=f"New user registered with email: {user.email}",
+
         )
         return user
 
@@ -99,6 +104,7 @@ class UserSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "first_name", "last_name", "email", "phone", "gender"]
+
 
 
 class MeterSerializer(serializers.ModelSerializer):
@@ -174,6 +180,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "technician",
             "status",
         ]
+
 
 
 class BillSerializer(serializers.ModelSerializer):
@@ -256,6 +263,7 @@ class DebtorSummarySerializer(serializers.Serializer):
     due_date = serializers.DateField()
 
 
+
 class TokenAuditLogSerializer(serializers.ModelSerializer):
     transaction = TransactionSerializer(read_only=True)
     meter = MeterSerializer(read_only=True)
@@ -304,4 +312,5 @@ class AuditLogSerializer(serializers.ModelSerializer):
             return obj.user.get_full_name()
         elif obj.user_snapshot:
             return f"{obj.user_snapshot} - [Deleted Account])"
+
         return "Unknown"

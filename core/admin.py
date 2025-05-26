@@ -28,10 +28,12 @@ class UserAdmin(admin.ModelAdmin):
     date_hierarchy = "date_joined"
 
 
+
 @admin.register(Meter)
 class MeterAdmin(admin.ModelAdmin):
     list_display = ("meter_number", "owner", "location", "status", "credit_balance")
     search_fields = ("meter_number", "owner", "location")
+
     list_filter = ("status",)
 
     # 🔹 Fieldsets for better field grouping
@@ -61,6 +63,7 @@ def mark_resolved(modeladmin, request, queryset):
 class ComplaintAdmin(admin.ModelAdmin):
     list_display = ("customer", "technician", "subject", "status", "created_at")
     search_fields = ("customer__phone", "subject")
+
     list_filter = ("status",)
     actions = [mark_resolved]
 
@@ -79,6 +82,7 @@ class TokenAuditLogAdmin(admin.ModelAdmin):
         "transaction__token",
         "meter__meter_number",
         "applied_by__first_name",
+
     )
     list_filter = ("applied_at",)
 
@@ -93,6 +97,7 @@ class ComplaintStatusAdmin(admin.ModelAdmin):
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
+
     list_display = (
         "id",
         "model_name",

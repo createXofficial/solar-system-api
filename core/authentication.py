@@ -3,7 +3,9 @@ import datetime
 import jwt
 
 from django.conf import settings
+
 from django.contrib.auth.backends import ModelBackend
+
 
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication
@@ -44,7 +46,9 @@ class JWTAuthentication(BaseAuthentication):
             new_tokens = self.generate_tokens(
                 user, two_fa_verified=payload.get("2fa_verified", False)
             )
+
             request.META["RENEWED_TOKEN"] = new_tokens["data"]["access"]
+
 
         return (user, token)
 
@@ -93,6 +97,7 @@ class JWTAuthentication(BaseAuthentication):
             payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=["HS256"])
 
             if payload.get("token_type") != "refresh":
+
                 raise exceptions.AuthenticationFailed("Invalid token type for refresh")
         except jwt.ExpiredSignatureError:
             raise exceptions.AuthenticationFailed("Refresh token expired")
@@ -105,3 +110,4 @@ class JWTAuthentication(BaseAuthentication):
             "ResponseMessage": "Success",
             "data": JWTAuthentication.generate_tokens(user),
         }
+

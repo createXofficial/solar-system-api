@@ -21,7 +21,9 @@ from .serializers import (
     AuditLogSerializer,
     BillSerializer,
     ComplaintSerializer,
+
     DebtorSummarySerializer,
+
     MeterSerializer,
     TokenAuditLogSerializer,
     TransactionSerializer,
@@ -108,7 +110,6 @@ class ApplyTokenView(views.APIView):
                 status=status.HTTP_200_OK,
             )
 
-
 class MeterViewSet(viewsets.ModelViewSet):
 
     serializer_class = MeterSerializer
@@ -116,6 +117,7 @@ class MeterViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["owner"]
     search_fields = ["meter_number", "owner__email"]
+
 
     def get_queryset(self):
         user = self.request.user
@@ -150,21 +152,24 @@ class MeterViewSet(viewsets.ModelViewSet):
         changes = get_changes(old_instance, new_data)
 
         log_action(
+
             user=self.request.user,
             model_name="Meter",
             action="updated",
             description=f"Updated meter {instance.meter_number}",
             metadata=changes,
-        )
+
 
     def perform_destroy(self, instance):
         meter_number = instance.meter_number
         instance.delete()
         log_action(
+
             user=self.request.user,
             model_name="Meter",
             action="deleted",
             description=f"Deleted meter {meter_number}",
+
         )
 
 
@@ -215,6 +220,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
             description=f"Deleted transaction {transaction_id} for meter {meter_number}",
         )
 
+
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def apply(self, request, pk=None):
         try:
@@ -237,6 +243,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     "ResponseMessage": "Token applied successfully.",
                 }
             )
+
         except Exception as e:
             log_action(
                 user=self.request.user,
@@ -487,6 +494,7 @@ class BillViewSet(viewsets.ModelViewSet):
         )
 
 
+
 class CustomerViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
@@ -550,6 +558,7 @@ class CustomerViewSet(viewsets.ViewSet):
             }
         )
 
+
     @action(detail=True, methods=["get"])
     def complaints(self, request, pk=None):
         try:
@@ -579,4 +588,5 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["model_name", "action", "user__email", "success"]
     search_fields = ["description", "user_snapshot", "model_name"]
+
     ordering_fields = ["timestamp"]

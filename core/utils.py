@@ -41,7 +41,6 @@ def create_jwt_pair_for_user(user):
 def invalidate_old_tokens(user):
     BlacklistedToken.objects.filter(user=user).delete()
 
-
 from core.models import AuditLog
 
 
@@ -72,6 +71,7 @@ def get_changes(old_instance, new_data):
         if old_value != new_value:
             changes[field] = {"from": str(old_value), "to": str(new_value)}
     return changes
+
 
 
 def generate_meter_token(transaction):

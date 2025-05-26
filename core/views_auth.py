@@ -3,6 +3,7 @@ import uuid
 from datetime import timedelta
 
 import jwt
+
 import jwt.utils
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -13,6 +14,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import encoding, timezone
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+
 
 from rest_framework import generics, permissions, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -31,6 +33,7 @@ from .serializers import (
 )
 from .utils import get_changes, log_action
 
+
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
@@ -46,6 +49,7 @@ class LoginView(APIView):
         email = request.data.get("email")
         password = request.data.get("password")
         user = authenticate(username=email, password=password)
+
         if user:
             # Check if 2FA is required
             now = timezone.now()
@@ -160,6 +164,7 @@ class TwoFactorVerifyView(APIView):
             )
 
 
+
 class LogoutView(APIView):
     def post(self, request):
         refresh_token = request.data.get("refresh")
@@ -182,6 +187,7 @@ class LogoutView(APIView):
                 },
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+
         # Decode to check validity
         try:
             jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=["HS256"])
@@ -192,6 +198,7 @@ class LogoutView(APIView):
         BlacklistedToken.objects.create(token=refresh_token)
 
         log_action(user=user, model_name="User", action="logout", description="User Logged out")
+
         return Response({"detail": "Logged out successfully."})
 
 
@@ -209,6 +216,7 @@ class SessionCheckView(APIView):
                 logout(request)
                 return Response(
                     {
+
                         "responseCode": "111",
                         "responseMessage": "Session error",
                         "data": {
@@ -449,6 +457,7 @@ class UserDetailUpdateDeleteView(APIView):
     def get(self, request, user_id):
         user = self.get_object(user_id)
         if not user:
+
             return Response(
                 {
                     "responseCode": "111",
@@ -614,12 +623,12 @@ class RefreshTokenView(APIView):
     def post(self, request):
         refresh_token = request.data.get("refresh")
         if not refresh_token:
-            return Response(
                 {
                     "responseCode": "111",
                     "responseMessage": "Token refresh failed",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
+
             )
 
         try:
@@ -633,5 +642,4 @@ class RefreshTokenView(APIView):
                 },
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-
         return Response(tokens, status=status.HTTP_200_OK)
