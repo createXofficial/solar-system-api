@@ -623,6 +623,7 @@ class RefreshTokenView(APIView):
     def post(self, request):
         refresh_token = request.data.get("refresh")
         if not refresh_token:
+            return Response(
                 {
                     "responseCode": "111",
                     "responseMessage": "Token refresh failed",
