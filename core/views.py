@@ -159,7 +159,7 @@ class MeterViewSet(viewsets.ModelViewSet):
             description=f"Updated meter {instance.meter_number}",
             metadata=changes,
 
-
+        )
     def perform_destroy(self, instance):
         meter_number = instance.meter_number
         instance.delete()
