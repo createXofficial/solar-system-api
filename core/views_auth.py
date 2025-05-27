@@ -33,7 +33,6 @@ from .serializers import (
 )
 from .utils import get_changes, log_action
 
-
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
@@ -163,8 +162,6 @@ class TwoFactorVerifyView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-
-
 class LogoutView(APIView):
     def post(self, request):
         refresh_token = request.data.get("refresh")
@@ -216,7 +213,6 @@ class SessionCheckView(APIView):
                 logout(request)
                 return Response(
                     {
-
                         "responseCode": "111",
                         "responseMessage": "Session error",
                         "data": {
@@ -629,7 +625,6 @@ class RefreshTokenView(APIView):
                     "responseMessage": "Token refresh failed",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
-
             )
 
         try:
