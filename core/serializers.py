@@ -7,6 +7,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
 
+from django.core.validators import EmailValidator
+
 from rest_framework import serializers
 
 from core.utils import log_action
@@ -183,6 +185,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
     customer_details = UserSummarySerializer(source="customer", read_only=True)
     technician_details = UserSummarySerializer(source="technician", read_only=True)
 
+
     class Meta:
         model = Complaint
         fields = [
@@ -194,6 +197,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "customer",  # for writing
             "customer_details",  # read-only nested
             "technician",
+
             "technician_details",  # read-only nested
             "status",
         ]

@@ -108,7 +108,6 @@ class ApplyTokenView(views.APIView):
                 status=status.HTTP_200_OK,
             )
 
-
 class MeterViewSet(viewsets.ModelViewSet):
 
     serializer_class = MeterSerializer
@@ -155,8 +154,8 @@ class MeterViewSet(viewsets.ModelViewSet):
             action="updated",
             description=f"Updated meter {instance.meter_number}",
             metadata=changes,
-        )
 
+        )
     def perform_destroy(self, instance):
         meter_number = instance.meter_number
         instance.delete()
@@ -268,9 +267,9 @@ class DebtorsViewSet(viewsets.ViewSet):
             unpaid_bills = Bill.objects.filter(
                 meter__owner=customer, status="pending"
             ).select_related("meter")
-
             if unpaid_bills.exists():
                 meter = unpaid_bills.first().meter
+
                 amount_owing = unpaid_bills.aggregate(total_due=Sum("amount_due"))["total_due"] or 0
 
                 earliest_due = unpaid_bills.aggregate(next_due=Min("due_date"))["next_due"]
@@ -333,6 +332,7 @@ class ComplaintViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["customer", "technician", "status"]
+
 
     def get_queryset(self):
         user = self.request.user
@@ -485,7 +485,6 @@ class BillViewSet(viewsets.ModelViewSet):
             action="deleted",
             description=f"Deleted bill {bill_id}",
         )
-
 
 class CustomerViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]

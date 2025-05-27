@@ -3,6 +3,7 @@ import uuid
 from datetime import timedelta
 
 import jwt
+
 import jwt.utils
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -13,6 +14,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import encoding, timezone
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+
 
 from rest_framework import generics, permissions, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -159,7 +161,6 @@ class TwoFactorVerifyView(APIView):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
-
 
 class LogoutView(APIView):
     def post(self, request):
